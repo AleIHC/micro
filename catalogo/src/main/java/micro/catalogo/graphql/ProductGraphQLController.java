@@ -11,10 +11,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Controller
-@RequiredArgsConstructor
 public class ProductGraphQLController {
 
     private final ProductService productService;
+
+    public ProductGraphQLController(ProductService productService) {
+        this.productService = productService;
+    }
 
     @QueryMapping
     public Flux<Product> getAllProducts() {

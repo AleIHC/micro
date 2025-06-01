@@ -4,16 +4,20 @@ import lombok.RequiredArgsConstructor;
 import micro.catalogo.model.Product;
 import micro.catalogo.service.ProductService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/products")
-@RequiredArgsConstructor
 public class ProductRestController {
 
     private final ProductService productService;
+
+    public ProductRestController(ProductService productService) {
+        this.productService = productService;
+    }
 
     @GetMapping
     public Flux<Product> getAllProducts() {
@@ -21,8 +25,10 @@ public class ProductRestController {
     }
 
     @GetMapping("/{id}")
-    public Mono<Product> getProductById(@PathVariable String id) {
-        return productService.getProductById(id);
+    public Mono<ResponseEntity<Product>> getProductById(@PathVariable String id) {
+        return productService.getProductById(id)
+                .map(product -> ResponseEntity.ok(product))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @PostMapping
