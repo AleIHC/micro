@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # Servicio de MongoDB para Catálogo
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb_catalog
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: catalog
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  # Servicio de PostgreSQL para Inventario
+  postgres:
+    image: postgres:13-alpine
+    container_name: postgres_inventory
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ para comunicación entre servicios
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  # Servicio de Catálogo
+  catalog-service:
+    build:
+      context: ./catalogo
+      dockerfile: Dockerfile
+    container_name: catalog-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/catalog
+      SPRING_RABBITMQ_HOST: rabbitmq
+
+  # Servicio de Inventario
+  inventory-service:
+    build:
+      context: ./inventario
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/inventory
+      SPRING_RABBITMQ_HOST: rabbitmq
+
+volumes:
+  mongodb_data:
+  postgres_data:
